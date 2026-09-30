@@ -32,7 +32,7 @@ app.addEventListener('click',async event=>{const el=event.target.closest('[data-
 });
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});
 setInterval(()=>{if(screen==='home'&&!document.hidden)refresh();},20000);
-try{bank=await(await fetch('bank.json?v=20261001-code')).json();await refresh();}catch{error='Не удалось загрузить вопросы. Обнови страницу.';render();}
+try{bank=await(await fetch('bank.json?v=20261001-explanations')).json();await refresh();}catch{error='Не удалось загрузить вопросы. Обнови страницу.';render();}
 
 app.addEventListener('toggle',event=>{
  const details=event.target;
