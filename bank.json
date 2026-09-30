@@ -3408,7 +3408,7 @@
     "protocol": {
       "file": "src/common/protocol.cpp",
       "start": 1,
-      "end": 54,
+      "end": 48,
       "code": "/*! @file protocol.cpp\nИсходный файл вспомогательных функций прикладного протокола. */\n\n#include \"common/protocol.hpp\"\n\n#include <algorithm>\n#include <cctype>\n#include <sstream>\n\nnamespace protocol {\n\nstd::string trim(const std::string& s) {\n  std::size_t first = 0u;\n  while (first < s.size() && std::isspace(static_cast<unsigned char>(s[first]))) {\n    ++first;\n  }\n  std::size_t last = s.size();\n  while (last > first && std::isspace(static_cast<unsigned char>(s[last - 1u]))) {\n    --last;\n  }\n  return s.substr(first, last - first);\n}\n\nstd::vector<std::string> split_words(const std::string& s) {\n  std::istringstream input(s);\n  std::vector<std::string> result;\n  std::string word;\n  while (input >> word) {\n    result.push_back(word);\n  }\n  return result;\n}\n\nstd::string one_line(std::string s) {\n  std::replace(s.begin(), s.end(), '\\n', ' ');\n  std::replace(s.begin(), s.end(), '\\r', ' ');\n  return s;\n}\n\nstd::string response(const std::string& status, const std::string& text) {\n  return status + \" \" + one_line(text) + \"\\n\";\n}\n\nbool starts_with(const std::string& s, const std::string& prefix) {\n  return s.size() >= prefix.size() && std::equal(prefix.begin(), prefix.end(), s.begin());\n}\n\n} // namespace protocol"
     },
     "parser": {
@@ -3432,13 +3432,13 @@
     "types": {
       "file": "src/model/calculator.hpp",
       "start": 12,
-      "end": 60,
+      "end": 58,
       "code": "struct Variables {\n  long long x = 0; ///< Значение X.\n  long long y = 0; ///< Значение Y.\n  long long z = 0; ///< Значение Z.\n};\n\n/// Ошибка разбора или вычисления выражения.\nclass CalculatorError : public std::runtime_error {\npublic:\n\n  explicit CalculatorError(const std::string& message) : std::runtime_error(message) {}\n};\n\n/// Класс вычисления выражений и хранения пользовательских переменных.\nclass CalculatorModel {\npublic:\n\n  /*! Создаёт модель и загружает сохранённые значения переменных.\n  @param storage_file Файл для хранения пользователей. */\n  explicit CalculatorModel(const std::string& storage_file);\n\n  /*! Обрабатывает пользовательскую команду.\n  @param user Имя пользователя.\n  @param command Команда калькулятора.\n  @return Ответ для клиента.\n  @throw CalculatorError При некорректной команде или выражении. */\n  std::string execute(const std::string& user, const std::string& command);\n\n  /*! Возвращает значения переменных пользователя. */\n  Variables variables(const std::string& user);\n\n  /*! Загружает значения переменных из файла. */\n  void load();\n\n  /*! Сохраняет значения переменных в файл. */\n  void save() const;\n\nprivate:\n\n  std::string _storage_file;              ///< Путь к файлу хранилища.\n  std::map<std::string, Variables> _vars; ///< Значения переменных по именам пользователей.\n};\n\n/// Вычисляет арифметическое выражение с переменными.\nlong long evaluate_expression(const std::string& text, const Variables& variables);\n\n#endif // CALCULATOR_HPP"
     },
     "main": {
       "file": "src/server_main.cpp",
       "start": 1,
-      "end": 39,
+      "end": 35,
       "code": "/*! @file server_main.cpp\nГлавный файл сервера сетевого калькулятора. */\n\n#include \"server/poll_server.hpp\"\n\n#include <csignal>\n#include <cstdlib>\n#include <iostream>\n#include <string>\n\nint main(int argc, char** argv) {\n  std::signal(SIGPIPE, SIG_IGN);\n\n  unsigned short port = 4040u;\n  std::string storage = \"data/users.db\";\n\n  if (argc > 1) {\n    port = static_cast<unsigned short>(std::atoi(argv[1]));\n  }\n  if (argc > 2) {\n    storage = argv[2];\n  }\n\n  try {\n    PollServer server(port, storage);\n    std::cout << \"> TCP port: \" << port << std::endl;\n    std::cout << \"> storage: \" << storage << std::endl;\n    server.run();\n  } catch (const std::exception& error) {\n    std::cerr << \"server error: \" << error.what() << std::endl;\n    return 1;\n  }\n\n  return 0;\n}"
     },
     "nonblock": {
