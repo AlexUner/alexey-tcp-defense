@@ -2038,7 +2038,7 @@
       ],
       "answer": "Читает приветствие и отправляет HELLO с именем.",
       "explanation": "Конструктор клиента сначала синхронизируется с приветствием сервера. Затем request отправляет HELLO и получает результат регистрации имени.",
-      "evidence": "request",
+      "evidence": "ctor",
       "oral": "Почему нельзя перепутать приветствие с ответом на CMD?"
     },
     {
@@ -2428,7 +2428,7 @@
       ],
       "answer": "Создает запись с Variables по умолчанию, где X, Y, Z равны нулю.",
       "explanation": "Variables задает нули в инициализаторах полей. Это поведение отличается от at, который при отсутствии ключа бросает исключение.",
-      "evidence": "execute",
+      "evidence": "variables",
       "oral": "Почему чтение через operator[] иногда меняет контейнер?"
     },
     {
@@ -3335,9 +3335,9 @@
     },
     "process": {
       "file": "src/server/poll_server.cpp",
-      "start": 193,
-      "end": 207,
-      "code": "void PollServer::process_lines(std::size_t index) {\n  Client& client = _clients[index];\n  while (true) {\n    std::size_t pos = client.input.find('\\n');\n    if (pos == std::string::npos) {\n      break;\n    }\n    std::string line = client.input.substr(0u, pos);\n    if (!line.empty() && line.back() == '\\r') {\n      line.pop_back();\n    }\n    client.input.erase(0u, pos + 1u);\n    process_line(client, line);\n  }\n}"
+      "start": 209,
+      "end": 266,
+      "code": "void PollServer::process_line(Client& client, const std::string& line) {\n  std::string text = protocol::trim(line);\n  if (text.empty()) {\n    client.output += protocol::response(\"ERR\", \"пустая строка протокола\");\n    return;\n  }\n\n  std::vector<std::string> words = protocol::split_words(text);\n  if (words.empty()) {\n    client.output += protocol::response(\"ERR\", \"пустая строка протокола\");\n    return;\n  }\n\n  if (!client.authorized) {\n    if (words[0] != \"HELLO\" || words.size() != 2u) {\n      client.output += protocol::response(\"ERR\", \"сначала отправьте HELLO <имя>\");\n      return;\n    }\n\n    try {\n      _model.variables(words[1]);\n      client.user = words[1];\n      client.authorized = true;\n      client.output += protocol::response(\"OK\", \"пользователь \" + client.user + \" подключён\");\n    } catch (const CalculatorError& error) {\n      client.output += protocol::response(\"ERR\", error.what());\n    }\n    return;\n  }\n\n  const std::string& verb = words[0];\n\n  if (verb == \"QUIT\") {\n    client.output += protocol::response(\"OK\", \"до свидания\");\n    return;\n  }\n\n  if (verb == \"PERF\") {\n    client.output += protocol::response(\"OK\", \"PERF\");\n    return;\n  }\n\n  if (verb != \"CMD\") {\n    client.output += protocol::response(\"ERR\", \"неизвестный тип сообщения\");\n    return;\n  }\n\n  std::string command = protocol::trim(text.substr(3u));\n\n  try {\n    std::string result = _model.execute(client.user, command);\n    client.output += protocol::response(\"OK\", result);\n  } catch (const CalculatorError& error) {\n    client.output += protocol::response(\"ERR\", std::string(\"Ошибка: \") + error.what());\n  } catch (const std::exception& error) {\n    client.output += protocol::response(\"ERR\", std::string(\"Внутренняя ошибка: \") + error.what());\n  }\n}"
     },
     "rebuild": {
       "file": "src/server/poll_server.cpp",
@@ -3392,6 +3392,18 @@
       "start": 293,
       "end": 302,
       "code": "void CalculatorModel::save() const {\n  ensure_parent_directory_exists(_storage_file);\n  std::ofstream output(_storage_file.c_str(), std::ios::trunc);\n  if (!output) {\n    throw CalculatorError(\"не удалось сохранить значения переменных\");\n  }\n  for (const auto& item : _vars) {\n    output << item.first << ' ' << item.second.x << ' ' << item.second.y << ' ' << item.second.z << '\\n';\n  }\n}"
+    },
+    "ctor": {
+      "file": "src/client/console_client.cpp",
+      "start": 24,
+      "end": 38,
+      "code": "ConsoleClient::ConsoleClient(const std::string& host, const std::string& port, const std::string& user)\n  : _socket(-1), _user(user), _performance_mode(false) {\n  connect_to_server(host, port);\n\n  std::string greeting = receive_line();\n  if (!greeting.empty()) {\n    std::cout << \"< \" << greeting << std::endl;\n  }\n\n  std::string answer = request(\"HELLO \" + _user + \"\\n\");\n  std::cout << \"< \" << answer << std::endl;\n  if (answer.find(\"OK\") != 0u) {\n    throw std::runtime_error(\"сервер не принял имя пользователя\");\n  }\n}"
+    },
+    "variables": {
+      "file": "src/model/calculator.cpp",
+      "start": 216,
+      "end": 221,
+      "code": "Variables CalculatorModel::variables(const std::string& user) {\n  if (!valid_user_name(user)) {\n    throw CalculatorError(\"некорректное имя пользователя\");\n  }\n  return _vars[user];\n}"
     },
     "protocol": {
       "file": "src/common/protocol.cpp",
